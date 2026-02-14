@@ -29,6 +29,16 @@ kill-port port:
         echo "No process found on port {{ port }}"
     fi
 
+migrate:
+    cd {{ root_dir }}/collector && go run ./cmd/migrate
+
+reset:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    psql "$DATABASE_URL" -c "DROP TABLE IF EXISTS price_history, fx_rate, schema_version CASCADE;"
+    echo "tables dropped"
+    just migrate
+
 collect target='all':
     cd {{ root_dir }}/collector && go run ./cmd/collect --target {{ target }}
 
