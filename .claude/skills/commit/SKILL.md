@@ -100,6 +100,22 @@ The body is a **short narrative** (1-4 sentences) answering:
 
 **Exception**: Large-scope commits (5+ files, multiple concerns) may append a brief summary list AFTER the narrative body, prefixed with "주요 변경:".
 
+### Korean Body Style Rules
+
+**Sentence ending**: Use nominal endings (`~함`, `~됨`, `~필요함`, `~없음`, `~있음`), NOT declarative endings (`~한다`, `~된다`, `~했다`).
+
+| Bad (declarative)                  | Good (nominal)                   |
+| ---------------------------------- | -------------------------------- |
+| 도메인 모델이 먼저 정의되어야 한다 | 도메인 모델이 먼저 정의되어야 함 |
+| exact version으로 고정했다         | exact version으로 고정함         |
+| 이 방식이 가장 적합하다고 판단했다 | 이 방식이 가장 적합하다고 판단함 |
+
+**Line breaks**: Break ONLY after a sentence ends (after nominal ending like `~함.`, `~됨.`). NEVER break mid-sentence — if a clause continues, keep it on the same line.
+
+| Bad (mid-sentence break)                                                     | Good (single line until sentence ends)                                  |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| 후속 커밋이 공유 타입 위에 빌드되려면<br>도메인 모델이 먼저 정의되어야 한다. | 후속 커밋이 공유 타입 위에 빌드되려면 도메인 모델이 먼저 정의되어야 함. |
+
 ### Complexity-Based Formats
 
 **Trivial** (typo, formatting, simple config):
