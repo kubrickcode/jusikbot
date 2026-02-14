@@ -1,0 +1,7 @@
+[
+  { "symbol": "ASML", "name": "ASML Holding", "market": "US", "type": "stock" },
+  { "symbol": "META", "name": "Meta Platforms", "market": "US", "type": "stock" },
+  { "symbol": "NVDA", "name": "NVIDIA", "market": "US", "type": "stock" },
+  { "symbol": "QQQ", "name": "Invesco QQQ Trust", "market": "US", "type": "etf" },
+  { "symbol": "069500", "name": "KODEX 200", "market": "KR", "type": "etf" }
+]

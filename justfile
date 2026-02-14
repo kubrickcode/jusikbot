@@ -29,6 +29,12 @@ kill-port port:
         echo "No process found on port {{ port }}"
     fi
 
+collect target='all':
+    cd {{ root_dir }}/collector && go run ./cmd/collect --target {{ target }}
+
+test-collector:
+    cd {{ root_dir }}/collector && go test ./...
+
 lint target="all":
     #!/usr/bin/env bash
     set -euox pipefail
