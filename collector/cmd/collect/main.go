@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -78,6 +79,12 @@ func run(ctx context.Context, target string, dryRun bool) error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
+	sc := &sourceCollector{
+		env:       env,
+		repo:      store.NewRepository(pool),
+		watchlist: watchlist,
+	}
+
 	targets := resolveTargets(target)
 	results := make([]SourceResult, 0, len(targets))
 
@@ -92,12 +99,19 @@ func run(ctx context.Context, target string, dryRun bool) error {
 			continue
 		}
 
-		result := collectSource(ctx, t)
+		result := sc.collect(ctx, t)
 		results = append(results, result)
 	}
 
 	reportResults(results, time.Since(started))
-	return nil
+
+	var errs []error
+	for _, r := range results {
+		if r.Error != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", r.Source, r.Error))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func resolveTargets(target string) []string {
@@ -105,23 +119,4 @@ func resolveTargets(target string) []string {
 		return []string{"tiingo", "kis", "fx"}
 	}
 	return []string{target}
-}
-
-func collectSource(ctx context.Context, source string) SourceResult {
-	started := time.Now()
-
-	switch source {
-	case "tiingo":
-		slog.Warn("not implemented yet", "source", "tiingo")
-	case "kis":
-		slog.Warn("not implemented yet", "source", "kis")
-	case "fx":
-		slog.Warn("not implemented yet", "source", "fx")
-	}
-
-	return SourceResult{
-		Elapsed: time.Since(started),
-		Error:   nil,
-		Source:  source,
-	}
 }

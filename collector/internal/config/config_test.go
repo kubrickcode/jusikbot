@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestLoadEnv_AllRequired(t *testing.T) {
+func TestLoadEnv_AllSet(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
 	t.Setenv("TIINGO_API_KEY", "test-tiingo-key")
 	t.Setenv("KIS_APP_KEY", "test-kis-key")
@@ -30,45 +30,31 @@ func TestLoadEnv_AllRequired(t *testing.T) {
 }
 
 func TestLoadEnv_MissingDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
 	t.Setenv("TIINGO_API_KEY", "key")
 	t.Setenv("KIS_APP_KEY", "key")
 	t.Setenv("KIS_APP_SECRET", "secret")
 
 	_, err := LoadEnv()
 	if err == nil {
-		t.Fatal("expected error for missing DATABASE_URL, got nil")
+		t.Fatal("expected error for empty DATABASE_URL, got nil")
 	}
 }
 
-func TestLoadEnv_MissingTiingoAPIKey(t *testing.T) {
+func TestLoadEnv_OnlyDatabaseURL(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
-	t.Setenv("KIS_APP_KEY", "key")
-	t.Setenv("KIS_APP_SECRET", "secret")
+	t.Setenv("TIINGO_API_KEY", "")
+	t.Setenv("KIS_APP_KEY", "")
+	t.Setenv("KIS_APP_SECRET", "")
 
-	_, err := LoadEnv()
-	if err == nil {
-		t.Fatal("expected error for missing TIINGO_API_KEY, got nil")
+	cfg, err := LoadEnv()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-}
-
-func TestLoadEnv_MissingKISAppKey(t *testing.T) {
-	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
-	t.Setenv("TIINGO_API_KEY", "key")
-	t.Setenv("KIS_APP_SECRET", "secret")
-
-	_, err := LoadEnv()
-	if err == nil {
-		t.Fatal("expected error for missing KIS_APP_KEY, got nil")
+	if cfg.DatabaseURL != "postgres://localhost:5432/test" {
+		t.Errorf("DatabaseURL = %q", cfg.DatabaseURL)
 	}
-}
-
-func TestLoadEnv_MissingKISAppSecret(t *testing.T) {
-	t.Setenv("DATABASE_URL", "postgres://localhost:5432/test")
-	t.Setenv("TIINGO_API_KEY", "key")
-	t.Setenv("KIS_APP_KEY", "key")
-
-	_, err := LoadEnv()
-	if err == nil {
-		t.Fatal("expected error for missing KIS_APP_SECRET, got nil")
+	if cfg.TiingoAPIKey != "" {
+		t.Errorf("TiingoAPIKey = %q, want empty", cfg.TiingoAPIKey)
 	}
 }
