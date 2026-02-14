@@ -10,13 +10,17 @@ import (
 	"github.com/jusikbot/collector/internal/config"
 	"github.com/jusikbot/collector/internal/domain"
 	"github.com/jusikbot/collector/internal/httpclient"
+	"github.com/jusikbot/collector/internal/kis"
 	"github.com/jusikbot/collector/internal/ratelimit"
 	"github.com/jusikbot/collector/internal/store"
 	"github.com/jusikbot/collector/internal/tiingo"
 	"golang.org/x/time/rate"
 )
 
-const tiingoBaseURL = "https://api.tiingo.com"
+const (
+	kisBaseURL    = "https://openapi.koreainvestment.com:9443"
+	tiingoBaseURL = "https://api.tiingo.com"
+)
 
 // Why 5s: Tiingo allows 50 req/hr burst with backoff.
 // 5s is conservative enough to avoid rate limiting under normal conditions.
@@ -24,6 +28,13 @@ var tiingoRetryCfg = ratelimit.RetryConfig{
 	InitialBackoff: 5 * time.Second,
 	MaxAttempts:    3,
 	MaxBackoff:     60 * time.Second,
+}
+
+// Why 1s: KIS personal accounts allow ~20 req/sec, but conservative to avoid throttling.
+var kisRetryCfg = ratelimit.RetryConfig{
+	InitialBackoff: 2 * time.Second,
+	MaxAttempts:    3,
+	MaxBackoff:     30 * time.Second,
 }
 
 type sourceCollector struct {
@@ -40,7 +51,7 @@ func (c *sourceCollector) collect(ctx context.Context, source string) SourceResu
 	case "tiingo":
 		err = c.collectTiingo(ctx)
 	case "kis":
-		slog.Warn("not implemented yet", "source", "kis")
+		err = c.collectKIS(ctx)
 	case "fx":
 		slog.Warn("not implemented yet", "source", "fx")
 	default:
@@ -52,6 +63,49 @@ func (c *sourceCollector) collect(ctx context.Context, source string) SourceResu
 		Error:   err,
 		Source:  source,
 	}
+}
+
+func (c *sourceCollector) collectKIS(ctx context.Context) error {
+	if c.env.KISAppKey == "" || c.env.KISAppSecret == "" {
+		return fmt.Errorf("KIS_APP_KEY and KIS_APP_SECRET are required")
+	}
+
+	krEntries := config.FilterByMarket(c.watchlist, domain.MarketKR)
+	if len(krEntries) == 0 {
+		slog.Info("no KR symbols in watchlist, skipping kis")
+		return nil
+	}
+
+	symbols := make([]string, len(krEntries))
+	for i, e := range krEntries {
+		symbols[i] = e.Symbol
+	}
+
+	gaps, err := c.repo.DetectGaps(ctx, symbols)
+	if err != nil {
+		return fmt.Errorf("detect gaps: %w", err)
+	}
+
+	// Why credentials appear in both places: KIS triple auth requires appkey/appsecret
+	// in POST body for token issuance (TokenProvider) AND in GET headers for data APIs (httpclient).
+	tokenProvider := kis.NewTokenProvider(kisBaseURL, c.env.KISAppKey, c.env.KISAppSecret, nil)
+	httpClient := httpclient.NewClient(
+		kisBaseURL,
+		map[string]string{
+			"appkey":    c.env.KISAppKey,
+			"appsecret": c.env.KISAppSecret,
+		},
+		nil,
+		0,
+	)
+	kisClient := kis.NewClient(httpClient, tokenProvider)
+
+	// Why Every(56ms): ~18 req/sec matches KIS personal account limits (analysis.md).
+	limiter := rate.NewLimiter(rate.Every(56*time.Millisecond), 1)
+	collector := kis.NewCollector(kisClient, limiter, kisRetryCfg)
+
+	prices, collectErr := collector.CollectAll(ctx, krEntries, gaps)
+	return c.savePartialResults(ctx, prices, collectErr, "kis")
 }
 
 func (c *sourceCollector) collectTiingo(ctx context.Context) error {
@@ -86,21 +140,29 @@ func (c *sourceCollector) collectTiingo(ctx context.Context) error {
 	collector := tiingo.NewCollector(tiingoClient, limiter, tiingoRetryCfg)
 
 	prices, collectErr := collector.CollectAll(ctx, usEntries, gaps)
+	return c.savePartialResults(ctx, prices, collectErr, "tiingo")
+}
 
-	// Why save before checking error: CollectAll returns partial results on failure.
+// savePartialResults persists collected prices and joins any collection/upsert errors.
+// Why save before checking collectErr: CollectAll returns partial results on failure.
+func (c *sourceCollector) savePartialResults(
+	ctx context.Context,
+	prices []domain.DailyPrice,
+	collectErr error,
+	source string,
+) error {
 	var upsertErr error
 	if len(prices) > 0 {
 		if collectErr != nil {
 			slog.Warn("saving partial results before reporting error",
-				"collected", len(prices), "error", collectErr)
+				"collected", len(prices), "error", collectErr, "source", source)
 		}
 		n, err := c.repo.UpsertPrices(ctx, prices)
 		if err != nil {
-			upsertErr = fmt.Errorf("upsert tiingo prices: %w", err)
+			upsertErr = fmt.Errorf("upsert %s prices: %w", source, err)
 		} else {
-			slog.Info("tiingo prices saved", "rows", n)
+			slog.Info("prices saved", "rows", n, "source", source)
 		}
 	}
-
 	return errors.Join(collectErr, upsertErr)
 }
