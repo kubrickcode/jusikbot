@@ -26,7 +26,7 @@
   {
     "market": "US",
     "name": "Invesco QQQ Trust",
-    "sector": "broad-market",
+    "sector": "us-broad-market",
     "symbol": "QQQ",
     "themes": ["nasdaq-exposure"],
     "type": "etf"
@@ -34,7 +34,7 @@
   {
     "market": "KR",
     "name": "KODEX 200",
-    "sector": "broad-market",
+    "sector": "kr-broad-market",
     "symbol": "069500",
     "themes": ["korea-exposure"],
     "type": "etf"

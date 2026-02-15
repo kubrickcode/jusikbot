@@ -20,7 +20,7 @@
       "sector": {
         "type": "string",
         "description": "섹터 분류. 섹터 집중도 검증에 사용 (settings.json의 max_sector_concentration_pct)",
-        "examples": ["semiconductor", "big-tech", "broad-market", "fintech"]
+        "examples": ["semiconductor", "big-tech", "us-broad-market", "kr-broad-market", "fintech"]
       },
       "symbol": {
         "type": "string",

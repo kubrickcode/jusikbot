@@ -19,7 +19,7 @@
 
 **Overextension Qualifier**: If confidence = High AND `vs 200D` > +20% → append "진입 타이밍 주의" to thesis assessment.
 
-**Pool Allocation**: Within each role bucket (core/satellite), distribute by confidence pools from `settings.json`:
+**Pool Allocation**: Core positions use fixed `strategy.core_internal_ratio` (confidence pools do not apply). Satellite positions distribute by confidence pools from `settings.json`:
 
 - High: `sizing.high_confidence_pool_pct`
 - Medium: `sizing.medium_confidence_pool_pct`
@@ -39,21 +39,30 @@
 
 ## Sizing
 
-**Stage 1 — Core/Satellite Split**:
+**Stage 1 — Core Fixed Allocation**:
 
-- Core: `settings.json` → `strategy.core_pct` of `budget_krw`
-- Satellite: `settings.json` → `strategy.satellite_pct` of `budget_krw`
-- Core internal ratio: reference `settings.json` → `strategy.core_internal_ratio` (symbol-to-weight map)
+- Core total: `settings.json` → `strategy.core_pct` of `budget_krw`
+- Satellite total: `settings.json` → `strategy.satellite_pct` of `budget_krw`
+- Core positions use `strategy.core_internal_ratio` (symbol-to-weight map) — fixed proportional split regardless of confidence level. Core internal ratio takes priority over confidence pools.
 
-**Stage 2 — Confidence Pool Allocation**:
-Within each role bucket, multiply by the confidence pool percentage for each position's confidence level.
+**Stage 2 — Satellite Confidence Pool Allocation**:
+Within the satellite bucket ONLY, distribute by confidence pool percentages from `settings.json` (`sizing.*_confidence_pool_pct`).
 
-**Stage 3 — Equal Weight**:
-Within each confidence pool, distribute equally among positions. Round each to nearest `adjustment_unit_krw` multiple.
+- **Empty Pool Redistribution**: If a confidence pool has zero positions, redistribute that pool's percentage proportionally to non-empty pools in the satellite bucket. Example: if no High positions exist (50% pool empty) and Medium (35%) and Low (15%) have positions, redistribute as Medium 70% and Low 30% of satellite budget.
+
+**Stage 3 — Equal Weight Within Pool**:
+Within each satellite confidence pool, distribute equally among positions. Round each to nearest `adjustment_unit_krw` multiple.
 
 **Remainder Handling**: After rounding, if total != `budget_krw`, absorb remainder into the largest core position.
 
 **Minimum Position**: Every position MUST >= `risk_tolerance.min_position_size_krw`. If a position falls below minimum after sizing, either increase to minimum (borrowing from the same pool) or exclude entirely.
+
+**Low Confidence Sizing**:
+
+- New positions: NOT permitted.
+- Existing positions: apply BOTH constraints, take the SMALLER result: (a) 50% of previous allocation amount, (b) the Low confidence pool share. First run (no previous report): only constraint (b) applies.
+
+**Constraint Priority** (when rules conflict during retry): (1) budget_total, (2) min_position, (3) anchoring, (4) core_satellite_ratio, (5) core_internal_ratio, (6) position_limits, (7) sector_concentration.
 
 **Drawdown Reference Point**: 52-week high from summary.md `52W H` column. Drawdown % = (52W H - Close) / 52W H \* 100.
 

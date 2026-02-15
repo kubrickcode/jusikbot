@@ -238,6 +238,11 @@ class TestSourceTags(unittest.TestCase):
         errors = validate_source_tags(report)
         self.assertEqual(errors, [])
 
+    def test_passes_config_tag(self):
+        report = "총 예산 5,000,000원 중 70%를 코어에 배분합니다 [config]."
+        errors = validate_source_tags(report)
+        self.assertEqual(errors, [])
+
 
 class TestKrDataWarning(unittest.TestCase):
     """validate_kr_data_warning"""

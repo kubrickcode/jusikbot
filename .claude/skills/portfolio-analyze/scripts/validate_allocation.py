@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate portfolio allocation against settings and watchlist constraints.
 
-Exit 0: PASS — allocation satisfies all rules.
-Exit 1: FAIL — structured JSON errors on stdout.
+Exit 0: PASS or FAIL — structured JSON on stdout.
+Exit 1: ERROR — input parsing or file access failure.
 """
 
 import argparse
@@ -402,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         allocations, watchlist, settings, previous, args.review_type
     )
     print(json.dumps(_serialize_result(result), ensure_ascii=False))
-    return 0 if result.status == "PASS" else 1
+    return 0
 
 
 if __name__ == "__main__":

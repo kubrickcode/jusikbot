@@ -1,7 +1,8 @@
 ---
 name: portfolio-analyze
 description: 논제 기반 포트폴리오 분석. 시장 데이터 요약과 투자 논제를 대조하여 확신도별 배분 금액을 제안하고, 인지 편향 가드레일과 직전 배분 앵커링을 적용한다.
-allowed-tools: Bash(validate-freshness:*), Bash(validate_allocation:*), Bash(validate_report:*), Bash(psql:*), Bash(ls:*), Read, Write, AskUserQuestion
+allowed-tools: Bash(python *), Bash(.claude/skills/portfolio-analyze/scripts/*), Bash(psql *), Bash(ls *), Read, Write, AskUserQuestion
+disable-model-invocation: true
 ---
 
 # Portfolio Analysis Workflow
@@ -19,10 +20,10 @@ These rules apply to ALL phases. Violation causes report rejection.
 | [summary] | `data/summary.md`              | 14-column technical indicators |
 | [psql]    | PostgreSQL via `$DATABASE_URL` | price_history, fx_rate tables  |
 | [user]    | `$ARGUMENTS`                   | User-provided context          |
+| [config]  | `config/settings.json`         | Budget, ratios, limits         |
 
 - You MUST NOT cite, infer, or reference any data not from the above sources.
-- Every numeric claim in the report MUST carry a source tag: `[summary]`, `[psql]`, or `[user]`.
-- Internal references to `config/settings.json` values do not require source tags in the report.
+- Every numeric claim in the report MUST carry a source tag: `[summary]`, `[psql]`, `[user]`, or `[config]`.
 
 **Confidence**: Default is **Medium**. Upgrade/downgrade rules in `references/methodology.md`.
 
@@ -119,7 +120,7 @@ python .claude/skills/portfolio-analyze/scripts/validate_allocation.py \
 ```
 
 - If PASS: proceed to Phase 4.
-- If FAIL: read the `errors` array. Fix ONLY the violated items (do NOT regenerate all allocations). Retry validation. Maximum 2 retries.
+- If FAIL: read the `errors` array. Fix the violated items first, then adjust related positions to maintain budget_total and other constraints. Do NOT regenerate all allocations from scratch — preserve unaffected positions. If a fix creates a new violation, follow the constraint priority in `references/methodology.md`. Retry validation. Maximum 2 retries.
 - If 3 failures AND previous report exists: use `previous_allocations` from Phase 1 as fallback. Add warning: "검증 3회 실패 — 직전 배분 유지".
 - If 3 failures AND no previous report (first run): generate a conservative equal-weight allocation using only core positions at Medium confidence, then re-validate once.
 

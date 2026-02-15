@@ -54,16 +54,16 @@ WATCHLIST = [
     {"symbol": "ASML", "type": "stock", "sector": "semiconductor", "market": "US"},
     {"symbol": "META", "type": "stock", "sector": "big-tech", "market": "US"},
     {"symbol": "NVDA", "type": "stock", "sector": "semiconductor", "market": "US"},
-    {"symbol": "QQQ", "type": "etf", "sector": "broad-market", "market": "US"},
-    {"symbol": "069500", "type": "etf", "sector": "broad-market", "market": "KR"},
+    {"symbol": "QQQ", "type": "etf", "sector": "us-broad-market", "market": "US"},
+    {"symbol": "069500", "type": "etf", "sector": "kr-broad-market", "market": "KR"},
 ]
 
 VALID_ALLOCATION = {
-    "QQQ": {"amount": 2_000_000, "role": "core", "confidence": "high"},
-    "NVDA": {"amount": 1_300_000, "role": "core", "confidence": "high"},
-    "069500": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
-    "ASML": {"amount": 700_000, "role": "satellite", "confidence": "medium"},
-    "META": {"amount": 500_000, "role": "satellite", "confidence": "low"},
+    "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+    "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
+    "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "medium"},
+    "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+    "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
 }
 
 
@@ -180,15 +180,16 @@ class TestSectorConcentration(unittest.TestCase):
 
     def test_rejects_sector_exceeding_60_percent(self):
         allocation = {
-            "QQQ": {"amount": 2_500_000, "role": "core", "confidence": "high"},
-            "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
-            "NVDA": {"amount": 800_000, "role": "satellite", "confidence": "high"},
-            "META": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "QQQ": {"amount": 1_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 500_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 1_600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 1_500_000, "role": "satellite", "confidence": "high"},
+            "META": {"amount": 100_000, "role": "satellite", "confidence": "low"},
         }
         errors = validate_sector_concentration(allocation, WATCHLIST, SETTINGS)
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].rule, "sector_concentration")
-        self.assertIn("broad-market", errors[0].detail)
+        self.assertIn("semiconductor", errors[0].detail)
 
 
 class TestMinPosition(unittest.TestCase):
@@ -280,11 +281,11 @@ class TestCoreSatelliteRatio(unittest.TestCase):
 
     def test_passes_at_70_percent(self):
         allocation = {
-            "QQQ": {"amount": 2_000_000, "role": "core", "confidence": "high"},
-            "NVDA": {"amount": 1_500_000, "role": "core", "confidence": "high"},
-            "069500": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "medium"},
             "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
-            "META": {"amount": 500_000, "role": "satellite", "confidence": "low"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
         }
         errors = validate_core_satellite_ratio(allocation, SETTINGS)
         self.assertEqual(errors, [])

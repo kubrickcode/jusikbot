@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate portfolio analysis report structure and content rules.
 
-Exit 0: PASS — report satisfies all rules.
-Exit 1: FAIL — structured JSON errors on stdout.
+Exit 0: PASS or FAIL — structured JSON on stdout.
+Exit 1: ERROR — file access failure.
 """
 
 import argparse
@@ -178,7 +178,7 @@ _NUMBER_PATTERN = re.compile(
     r"|\d{1,3}(?:,\d{3})+",
     re.IGNORECASE,
 )
-_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자)\]")
+_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자|config)\]")
 
 
 def validate_source_tags(content: str) -> list[ReportError]:
@@ -278,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
 
     result = validate_report(content)
     print(json.dumps(_serialize_result(result), ensure_ascii=False))
-    return 0 if result.status == "PASS" else 1
+    return 0
 
 
 if __name__ == "__main__":
