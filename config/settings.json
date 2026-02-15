@@ -8,6 +8,7 @@
     "quarterly_max_total_change_krw": 1500000
   },
   "budget_krw": 5000000,
+  "min_review_interval_days": 7,
   "risk_tolerance": {
     "max_drawdown_action_pct": 25,
     "max_drawdown_warning_pct": 15,
@@ -22,6 +23,10 @@
     "medium_confidence_pool_pct": 35
   },
   "strategy": {
+    "core_internal_ratio": {
+      "069500": 1,
+      "QQQ": 2
+    },
     "core_pct": 70,
     "satellite_pct": 30
   }

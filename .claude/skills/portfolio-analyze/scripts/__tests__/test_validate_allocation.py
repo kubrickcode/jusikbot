@@ -14,6 +14,7 @@ from validate_allocation import (
     validate_sector_concentration,
     validate_min_position,
     validate_core_satellite_ratio,
+    validate_core_internal_ratio,
     validate_anchoring,
     validate_confidence_pool,
     validate_watchlist_membership,
@@ -23,7 +24,11 @@ from validate_allocation import (
 SETTINGS = {
     "budget_krw": 5_000_000,
     "adjustment_unit_krw": 100_000,
-    "strategy": {"core_pct": 70, "satellite_pct": 30},
+    "strategy": {
+        "core_pct": 70,
+        "satellite_pct": 30,
+        "core_internal_ratio": {"QQQ": 2, "069500": 1},
+    },
     "sizing": {
         "high_confidence_pool_pct": 50,
         "medium_confidence_pool_pct": 35,
@@ -205,6 +210,69 @@ class TestMinPosition(unittest.TestCase):
         self.assertEqual(len(errors), 2)
         symbols = {e.detail.split(":")[0].strip() for e in errors}
         self.assertEqual(symbols, {"ASML", "META"})
+
+
+class TestCoreInternalRatio(unittest.TestCase):
+    """validate_core_internal_ratio"""
+
+    def test_passes_at_2_to_1_ratio(self):
+        allocation = {
+            "QQQ": {"amount": 2_400_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_100_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_core_internal_ratio(allocation, SETTINGS)
+        self.assertEqual(errors, [])
+
+    def test_passes_within_5pp_tolerance(self):
+        allocation = {
+            "QQQ": {"amount": 2_200_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_300_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_core_internal_ratio(allocation, SETTINGS)
+        self.assertEqual(errors, [])
+
+    def test_rejects_inverted_ratio(self):
+        allocation = {
+            "QQQ": {"amount": 1_000_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 2_500_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_core_internal_ratio(allocation, SETTINGS)
+        self.assertGreaterEqual(len(errors), 1)
+        self.assertEqual(errors[0].rule, "core_internal_ratio")
+
+    def test_skips_when_only_one_core_symbol_in_ratio(self):
+        allocation = {
+            "QQQ": {"amount": 3_500_000, "role": "core", "confidence": "high"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_core_internal_ratio(allocation, SETTINGS)
+        self.assertEqual(errors, [])
+
+    def test_skips_when_no_ratio_configured(self):
+        settings_no_ratio = {
+            **SETTINGS,
+            "strategy": {"core_pct": 70, "satellite_pct": 30},
+        }
+        allocation = {
+            "QQQ": {"amount": 2_000_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_500_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "high"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_core_internal_ratio(allocation, settings_no_ratio)
+        self.assertEqual(errors, [])
 
 
 class TestCoreSatelliteRatio(unittest.TestCase):

@@ -169,6 +169,47 @@ def validate_core_satellite_ratio(
     return []
 
 
+def validate_core_internal_ratio(
+    allocations: dict, settings: dict
+) -> list[AllocationError]:
+    ratio_map = settings.get("strategy", {}).get("core_internal_ratio")
+    if not ratio_map:
+        return []
+
+    core_positions = {
+        sym: pos for sym, pos in allocations.items() if pos["role"] == "core"
+    }
+    if not core_positions:
+        return []
+
+    ratio_symbols = set(ratio_map.keys())
+    core_symbols = set(core_positions.keys())
+    relevant = ratio_symbols & core_symbols
+    if len(relevant) < 2:
+        return []
+
+    total_weight = sum(ratio_map[s] for s in relevant)
+    errors = []
+    for symbol in sorted(relevant):
+        expected_pct = ratio_map[symbol] / total_weight
+        core_total = sum(pos["amount"] for pos in core_positions.values())
+        if core_total == 0:
+            continue
+        actual_pct = core_positions[symbol]["amount"] / core_total
+
+        if abs(actual_pct - expected_pct) > _CORE_SATELLITE_TOLERANCE + _FLOAT_EPSILON:
+            errors.append(
+                AllocationError(
+                    rule="core_internal_ratio",
+                    expected=f"{expected_pct * 100:.0f}%",
+                    actual=f"{actual_pct * 100:.1f}%",
+                    detail=f"{symbol}: core internal ratio {actual_pct * 100:.1f}% vs expected {expected_pct * 100:.0f}% (±5%p tolerance)",
+                )
+            )
+
+    return errors
+
+
 def validate_anchoring(
     allocations: dict,
     previous: Optional[dict],
@@ -280,10 +321,13 @@ def validate_allocation(
     errors.extend(validate_budget_total(allocations, settings))
     errors.extend(validate_adjustment_unit(allocations, settings))
     errors.extend(validate_position_limits(allocations, watchlist, settings))
-    errors.extend(validate_sector_concentration(allocations, watchlist, settings))
+    errors.extend(validate_sector_concentration(
+        allocations, watchlist, settings))
     errors.extend(validate_min_position(allocations, settings))
     errors.extend(validate_core_satellite_ratio(allocations, settings))
-    errors.extend(validate_anchoring(allocations, previous, review_type, settings))
+    errors.extend(validate_core_internal_ratio(allocations, settings))
+    errors.extend(validate_anchoring(
+        allocations, previous, review_type, settings))
 
     status = "PASS" if not errors else "FAIL"
     return ValidationResult(status=status, errors=errors)
@@ -310,9 +354,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate portfolio allocation against constraints"
     )
-    parser.add_argument("--settings", required=True, help="Path to settings.json")
-    parser.add_argument("--watchlist", required=True, help="Path to watchlist.json")
-    parser.add_argument("--allocations", required=True, help="Allocation JSON string")
+    parser.add_argument("--settings", required=True,
+                        help="Path to settings.json")
+    parser.add_argument("--watchlist", required=True,
+                        help="Path to watchlist.json")
+    parser.add_argument("--allocations", required=True,
+                        help="Allocation JSON string")
     parser.add_argument(
         "--previous-allocations", help="Previous allocation JSON string"
     )

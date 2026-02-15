@@ -64,7 +64,7 @@ if [[ "$summary_date" != "$today" ]]; then
   cat <<EOF
 {"status":"STALE","summary_date":"$summary_date","days_old":$days_old,"review_type":"$review_type","latest_report":$latest_report_json}
 EOF
-  exit 1
+  exit 0
 fi
 
 cat <<EOF
