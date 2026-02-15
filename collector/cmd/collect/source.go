@@ -9,6 +9,7 @@ import (
 
 	"github.com/jusikbot/collector/internal/config"
 	"github.com/jusikbot/collector/internal/domain"
+	"github.com/jusikbot/collector/internal/fx"
 	"github.com/jusikbot/collector/internal/httpclient"
 	"github.com/jusikbot/collector/internal/kis"
 	"github.com/jusikbot/collector/internal/ratelimit"
@@ -18,8 +19,9 @@ import (
 )
 
 const (
-	kisBaseURL    = "https://openapi.koreainvestment.com:9443"
-	tiingoBaseURL = "https://api.tiingo.com"
+	frankfurterBaseURL = "https://api.frankfurter.dev"
+	kisBaseURL         = "https://openapi.koreainvestment.com:9443"
+	tiingoBaseURL      = "https://api.tiingo.com"
 )
 
 // Why 5s: Tiingo allows 50 req/hr burst with backoff.
@@ -28,6 +30,13 @@ var tiingoRetryCfg = ratelimit.RetryConfig{
 	InitialBackoff: 5 * time.Second,
 	MaxAttempts:    3,
 	MaxBackoff:     60 * time.Second,
+}
+
+// Why 2s: Frankfurter has no rate limit, but retry with backoff for transient failures.
+var fxRetryCfg = ratelimit.RetryConfig{
+	InitialBackoff: 2 * time.Second,
+	MaxAttempts:    3,
+	MaxBackoff:     30 * time.Second,
 }
 
 // Why 1s: KIS personal accounts allow ~20 req/sec, but conservative to avoid throttling.
@@ -53,7 +62,7 @@ func (c *sourceCollector) collect(ctx context.Context, source string) SourceResu
 	case "kis":
 		err = c.collectKIS(ctx)
 	case "fx":
-		slog.Warn("not implemented yet", "source", "fx")
+		err = c.collectFX(ctx)
 	default:
 		err = fmt.Errorf("unknown source %q", source)
 	}
@@ -141,6 +150,34 @@ func (c *sourceCollector) collectTiingo(ctx context.Context) error {
 
 	prices, collectErr := collector.CollectAll(ctx, usEntries, gaps)
 	return c.savePartialResults(ctx, prices, collectErr, "tiingo")
+}
+
+func (c *sourceCollector) collectFX(ctx context.Context) error {
+	gaps, err := c.repo.DetectFXGaps(ctx, []string{"USD/KRW"})
+	if err != nil {
+		return fmt.Errorf("detect fx gaps: %w", err)
+	}
+
+	httpClient := httpclient.NewClient(frankfurterBaseURL, nil, nil, 0)
+	fxClient := fx.NewClient(httpClient)
+	collector := fx.NewCollector(fxClient, fxRetryCfg)
+
+	rates, err := collector.CollectFX(ctx, "USD", "KRW", gaps)
+	if err != nil {
+		return fmt.Errorf("collect fx: %w", err)
+	}
+
+	if len(rates) == 0 {
+		return nil
+	}
+
+	n, err := c.repo.UpsertFXRates(ctx, rates)
+	if err != nil {
+		return fmt.Errorf("upsert fx rates: %w", err)
+	}
+	slog.Info("fx rates saved", "rows", n)
+
+	return nil
 }
 
 // savePartialResults persists collected prices and joins any collection/upsert errors.
