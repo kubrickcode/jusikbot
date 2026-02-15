@@ -52,28 +52,6 @@ type sourceCollector struct {
 	watchlist []domain.WatchlistEntry
 }
 
-func (c *sourceCollector) collect(ctx context.Context, source string) SourceResult {
-	started := time.Now()
-	var err error
-
-	switch source {
-	case "tiingo":
-		err = c.collectTiingo(ctx)
-	case "kis":
-		err = c.collectKIS(ctx)
-	case "fx":
-		err = c.collectFX(ctx)
-	default:
-		err = fmt.Errorf("unknown source %q", source)
-	}
-
-	return SourceResult{
-		Elapsed: time.Since(started),
-		Error:   err,
-		Source:  source,
-	}
-}
-
 func (c *sourceCollector) collectKIS(ctx context.Context) error {
 	if c.env.KISAppKey == "" || c.env.KISAppSecret == "" {
 		return fmt.Errorf("KIS_APP_KEY and KIS_APP_SECRET are required")

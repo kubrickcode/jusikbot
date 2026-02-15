@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -11,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jusikbot/collector/internal/collector"
 	"github.com/jusikbot/collector/internal/config"
 	"github.com/jusikbot/collector/internal/store"
 )
@@ -85,33 +85,10 @@ func run(ctx context.Context, target string, dryRun bool) error {
 		watchlist: watchlist,
 	}
 
-	targets := resolveTargets(target)
-	results := make([]SourceResult, 0, len(targets))
-
-	for _, t := range targets {
-		if ctx.Err() != nil {
-			slog.Warn("cancelled before collecting", "source", t)
-			results = append(results, SourceResult{
-				Elapsed: 0,
-				Error:   ctx.Err(),
-				Source:  t,
-			})
-			continue
-		}
-
-		result := sc.collect(ctx, t)
-		results = append(results, result)
-	}
-
-	reportResults(results, time.Since(started))
-
-	var errs []error
-	for _, r := range results {
-		if r.Error != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", r.Source, r.Error))
-		}
-	}
-	return errors.Join(errs...)
+	sources := sc.buildSources(target)
+	results := collector.CollectAll(ctx, sources)
+	collector.ReportResults(results, time.Since(started))
+	return collector.AggregateErrors(results)
 }
 
 func resolveTargets(target string) []string {
@@ -119,4 +96,24 @@ func resolveTargets(target string) []string {
 		return []string{"tiingo", "kis", "fx"}
 	}
 	return []string{target}
+}
+
+func (c *sourceCollector) buildSources(target string) []collector.Source {
+	targets := resolveTargets(target)
+	sources := make([]collector.Source, 0, len(targets))
+
+	for _, t := range targets {
+		switch t {
+		case "tiingo":
+			sources = append(sources, collector.Source{Name: "tiingo", Collect: c.collectTiingo})
+		case "kis":
+			sources = append(sources, collector.Source{Name: "kis", Collect: c.collectKIS})
+		case "fx":
+			sources = append(sources, collector.Source{Name: "fx", Collect: c.collectFX})
+		default:
+			slog.Warn("unknown collection target, skipping", "target", t)
+		}
+	}
+
+	return sources
 }
