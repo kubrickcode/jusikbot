@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Portfolio Analysis Settings",
+  "description": "포트폴리오 분석 스킬의 예산, 리스크 한도, 앵커링 설정",
+  "type": "object",
+  "required": [
+    "adjustment_unit_krw",
+    "anchoring",
+    "budget_krw",
+    "risk_tolerance",
+    "sizing",
+    "strategy"
+  ],
+  "properties": {
+    "adjustment_unit_krw": {
+      "type": "integer",
+      "description": "배분 변경 최소 단위 (원). 모든 배분 금액은 이 값의 배수여야 함. 예: 100000이면 10만원 단위로만 변경",
+      "minimum": 10000
+    },
+    "anchoring": {
+      "type": "object",
+      "description": "리뷰당 배분 변경 한도. 과잉거래 방지를 위해 직전 배분 대비 변경 폭을 제한",
+      "required": [
+        "monthly_max_change_per_position_krw",
+        "monthly_max_total_change_krw",
+        "quarterly_max_change_per_position_krw",
+        "quarterly_max_total_change_krw"
+      ],
+      "properties": {
+        "monthly_max_change_per_position_krw": {
+          "type": "integer",
+          "description": "월간 리뷰: 개별 종목당 최대 변경 금액 (원)"
+        },
+        "monthly_max_total_change_krw": {
+          "type": "integer",
+          "description": "월간 리뷰: 전 종목 변경 합계 최대 금액 (원)"
+        },
+        "quarterly_max_change_per_position_krw": {
+          "type": "integer",
+          "description": "분기 리뷰: 개별 종목당 최대 변경 금액 (원)"
+        },
+        "quarterly_max_total_change_krw": {
+          "type": "integer",
+          "description": "분기 리뷰: 전 종목 변경 합계 최대 금액 (원). 분기 누적 한도이므로 월간 × 3과 같거나 그 이하"
+        }
+      }
+    },
+    "budget_krw": {
+      "type": "integer",
+      "description": "총 투자 예산 (원). 배분 합계는 이 금액을 초과할 수 없음",
+      "minimum": 100000
+    },
+    "risk_tolerance": {
+      "type": "object",
+      "description": "리스크 한도. 배분 검증 스크립트가 이 값을 기준으로 위반 여부를 판정",
+      "required": [
+        "max_drawdown_action_pct",
+        "max_drawdown_warning_pct",
+        "max_sector_concentration_pct",
+        "max_single_etf_pct",
+        "max_single_stock_pct",
+        "min_position_size_krw"
+      ],
+      "properties": {
+        "max_drawdown_action_pct": {
+          "type": "number",
+          "description": "52주 고점 대비 하락률이 이 값을 넘으면 포지션 축소 행동 트리거 (%)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_drawdown_warning_pct": {
+          "type": "number",
+          "description": "52주 고점 대비 하락률이 이 값을 넘으면 경고 표시 (%). action_pct보다 작아야 함",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_sector_concentration_pct": {
+          "type": "number",
+          "description": "한 섹터(watchlist.json의 sector 필드 기준)에 배분할 수 있는 최대 비율 (%)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_single_etf_pct": {
+          "type": "number",
+          "description": "ETF 1종목에 배분할 수 있는 최대 비율 (%). ETF는 내부 분산이 있어 주식보다 높게 설정",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_single_stock_pct": {
+          "type": "number",
+          "description": "개별주식 1종목에 배분할 수 있는 최대 비율 (%)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "min_position_size_krw": {
+          "type": "integer",
+          "description": "최소 포지션 크기 (원). 이 금액 미만으로는 배분하지 않음",
+          "minimum": 0
+        }
+      }
+    },
+    "sizing": {
+      "type": "object",
+      "description": "확신도별 배분 풀 비율. Core/Satellite 각 풀 안에서 확신도별로 재분배. 합계 100이어야 함",
+      "required": [
+        "high_confidence_pool_pct",
+        "low_confidence_pool_pct",
+        "medium_confidence_pool_pct"
+      ],
+      "properties": {
+        "high_confidence_pool_pct": {
+          "type": "number",
+          "description": "High 확신도 종목이 가져가는 풀 비율 (%). 증거 2개+(다른 카테고리) 필요",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "low_confidence_pool_pct": {
+          "type": "number",
+          "description": "Low 확신도 종목이 가져가는 풀 비율 (%). 신규 진입 금지, 기존 50% 축소",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "medium_confidence_pool_pct": {
+          "type": "number",
+          "description": "Medium 확신도 종목이 가져가는 풀 비율 (%). 기본값 — 별도 증명 불필요",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "strategy": {
+      "type": "object",
+      "description": "Core/Satellite 전략 비율. 합계 100이어야 함",
+      "required": ["core_pct", "satellite_pct"],
+      "properties": {
+        "core_pct": {
+          "type": "number",
+          "description": "코어(안전자산) 배분 비율 (%). ETF 등 장기 보유 목적",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "satellite_pct": {
+          "type": "number",
+          "description": "위성(공격자산) 배분 비율 (%). 개별주 등 테마 집중",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}

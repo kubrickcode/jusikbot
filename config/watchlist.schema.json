@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Watchlist",
+  "description": "추적 종목 목록. Go collector가 시세를 수집하고, 분석 스킬이 섹터/테마 정보를 사용",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": ["market", "name", "sector", "symbol", "themes", "type"],
+    "properties": {
+      "market": {
+        "type": "string",
+        "enum": ["US", "KR"],
+        "description": "거래소. US=미국(Tiingo API), KR=한국(KIS API)"
+      },
+      "name": {
+        "type": "string",
+        "description": "종목 표시명. 리포트에서 사람이 읽을 용도"
+      },
+      "sector": {
+        "type": "string",
+        "description": "섹터 분류. 섹터 집중도 검증에 사용 (settings.json의 max_sector_concentration_pct)",
+        "examples": ["semiconductor", "big-tech", "broad-market", "fintech"]
+      },
+      "symbol": {
+        "type": "string",
+        "description": "종목 심볼. US: 티커(NVDA), KR: 6자리 코드(069500). 수집·분석·배분의 고유 키"
+      },
+      "themes": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "투자 테마 태그. 같은 테마 종목끼리 상대강도 비교에 사용",
+        "examples": [["AI-infra"], ["AI-app", "metaverse"], ["korea-exposure"]]
+      },
+      "type": {
+        "type": "string",
+        "enum": ["stock", "etf"],
+        "description": "증권 유형. ETF는 max_single_etf_pct, 주식은 max_single_stock_pct 한도 적용"
+      }
+    }
+  }
+}

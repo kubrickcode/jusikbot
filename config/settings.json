@@ -1,0 +1,28 @@
+{
+  "$schema": "./settings.schema.json",
+  "adjustment_unit_krw": 100000,
+  "anchoring": {
+    "monthly_max_change_per_position_krw": 200000,
+    "monthly_max_total_change_krw": 500000,
+    "quarterly_max_change_per_position_krw": 400000,
+    "quarterly_max_total_change_krw": 1500000
+  },
+  "budget_krw": 5000000,
+  "risk_tolerance": {
+    "max_drawdown_action_pct": 25,
+    "max_drawdown_warning_pct": 15,
+    "max_sector_concentration_pct": 60,
+    "max_single_etf_pct": 50,
+    "max_single_stock_pct": 30,
+    "min_position_size_krw": 100000
+  },
+  "sizing": {
+    "high_confidence_pool_pct": 50,
+    "low_confidence_pool_pct": 15,
+    "medium_confidence_pool_pct": 35
+  },
+  "strategy": {
+    "core_pct": 70,
+    "satellite_pct": 30
+  }
+}

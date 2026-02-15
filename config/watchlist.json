@@ -1,7 +1,42 @@
 [
-  { "symbol": "ASML", "name": "ASML Holding", "market": "US", "type": "stock" },
-  { "symbol": "META", "name": "Meta Platforms", "market": "US", "type": "stock" },
-  { "symbol": "NVDA", "name": "NVIDIA", "market": "US", "type": "stock" },
-  { "symbol": "QQQ", "name": "Invesco QQQ Trust", "market": "US", "type": "etf" },
-  { "symbol": "069500", "name": "KODEX 200", "market": "KR", "type": "etf" }
+  {
+    "market": "US",
+    "name": "ASML Holding",
+    "sector": "semiconductor",
+    "symbol": "ASML",
+    "themes": ["AI-infra"],
+    "type": "stock"
+  },
+  {
+    "market": "US",
+    "name": "Meta Platforms",
+    "sector": "big-tech",
+    "symbol": "META",
+    "themes": ["AI-app"],
+    "type": "stock"
+  },
+  {
+    "market": "US",
+    "name": "NVIDIA",
+    "sector": "semiconductor",
+    "symbol": "NVDA",
+    "themes": ["AI-infra"],
+    "type": "stock"
+  },
+  {
+    "market": "US",
+    "name": "Invesco QQQ Trust",
+    "sector": "broad-market",
+    "symbol": "QQQ",
+    "themes": ["nasdaq-exposure"],
+    "type": "etf"
+  },
+  {
+    "market": "KR",
+    "name": "KODEX 200",
+    "sector": "broad-market",
+    "symbol": "069500",
+    "themes": ["korea-exposure"],
+    "type": "etf"
+  }
 ]
