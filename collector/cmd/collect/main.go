@@ -7,15 +7,20 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/jusikbot/collector/internal/collector"
 	"github.com/jusikbot/collector/internal/config"
 	"github.com/jusikbot/collector/internal/store"
+	"github.com/jusikbot/collector/internal/summary"
 )
 
-const watchlistPath = "config/watchlist.json"
+const (
+	summaryOutputPath = "../data/summary.md"
+	watchlistPath     = "config/watchlist.json"
+)
 
 func main() {
 	target, dryRun := parseFlags()
@@ -88,6 +93,15 @@ func run(ctx context.Context, target string, dryRun bool) error {
 	sources := sc.buildSources(target)
 	results := collector.CollectAll(ctx, sources)
 	collector.ReportResults(results, time.Since(started))
+
+	// Intent: summary는 부가 출력이므로 실패해도 수집 exit code에 반영하지 않음.
+	absOutputPath, _ := filepath.Abs(summaryOutputPath)
+	if err := summary.GenerateSummary(ctx, sc.repo, watchlist, summaryOutputPath); err != nil {
+		slog.Error("summary generation failed", "error", err, "path", absOutputPath)
+	} else {
+		slog.Info("summary generated", "path", absOutputPath)
+	}
+
 	return collector.AggregateErrors(results)
 }
 

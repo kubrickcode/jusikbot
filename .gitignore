@@ -6,5 +6,7 @@ node_modules
 .claude-sessions/
 .claude-session-config.json
 
+data/
+
 docs/work/
 docs/epic/

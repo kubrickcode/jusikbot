@@ -1,0 +1,42 @@
+# Portfolio Summary
+
+> Generated: {{.GeneratedAt}}
+{{- if .USRows}}
+
+## US Stocks
+
+| Symbol | Name | Close | 5D | 20D | 52W H | 52W L | 52W Pos | vs 50D | vs 200D | Cross | vs Bench | Vol Ratio | HV 20D | HV 60D |
+|--------|------|------:|---:|----:|------:|------:|--------:|-------:|--------:|:-----:|---------:|----------:|-------:|-------:|
+{{- range .USRows}}
+| {{.Symbol}} | {{.Name}} | {{fmtPrice .Indicators.AdjClose}} | {{fmtPct .Indicators.Change5D}} | {{fmtPct .Indicators.Change20D}} | {{fmtOptPrice .Indicators.FiftyTwoWeekHigh}} | {{fmtOptPrice .Indicators.FiftyTwoWeekLow}} | {{fmtPos .Indicators.FiftyTwoWeekPos}} | {{fmtPct .Indicators.MADivergence50D}} | {{fmtPct .Indicators.MADivergence200D}} | {{fmtCross .Indicators.MACross}} | {{fmtPct .Indicators.RelativeBench20D}} | {{fmtRatio .Indicators.VolRatio}} | {{fmtPct .Indicators.HV20D}} | {{fmtPct .Indicators.HV60D}} |
+{{- end}}
+{{- end}}
+{{- if .KRRows}}
+
+## KR Stocks
+
+> KIS 수정주가는 배당/분배금을 미반영합니다. KR 종목의 MA 이격도, 52W Position 등은 실제보다 과소평가될 수 있습니다.
+
+| Symbol | Name | Close | 5D | 20D | 52W H | 52W L | 52W Pos | vs 50D | vs 200D | Cross | vs Bench | Vol Ratio | HV 20D | HV 60D |
+|--------|------|------:|---:|----:|------:|------:|--------:|-------:|--------:|:-----:|---------:|----------:|-------:|-------:|
+{{- range .KRRows}}
+| {{.Symbol}} | {{.Name}} | {{fmtPrice .Indicators.AdjClose}} | {{fmtPct .Indicators.Change5D}} | {{fmtPct .Indicators.Change20D}} | {{fmtOptPrice .Indicators.FiftyTwoWeekHigh}} | {{fmtOptPrice .Indicators.FiftyTwoWeekLow}} | {{fmtPos .Indicators.FiftyTwoWeekPos}} | {{fmtPct .Indicators.MADivergence50D}} | {{fmtPct .Indicators.MADivergence200D}} | {{fmtCross .Indicators.MACross}} | {{fmtPct .Indicators.RelativeBench20D}} | {{fmtRatio .Indicators.VolRatio}} | {{fmtPct .Indicators.HV20D}} | {{fmtPct .Indicators.HV60D}} |
+{{- end}}
+{{- end}}
+{{- if .FXRate}}
+
+## Exchange Rate
+
+| Pair | Rate | Date |
+|------|-----:|------|
+| {{.FXRate.Pair}} | {{fmtFXRate .FXRate.Rate}} | {{.FXRate.Date}} |
+{{- end}}
+{{- if .InsufficientSymbols}}
+
+---
+
+*Notes:*
+{{- range .InsufficientSymbols}}
+- {{.}}
+{{- end}}
+{{- end}}
