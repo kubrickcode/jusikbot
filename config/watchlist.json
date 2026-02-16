@@ -1,5 +1,21 @@
 [
   {
+    "market": "KR",
+    "name": "TIGER 미국나스닥100",
+    "sector": "us-broad-market",
+    "symbol": "133690",
+    "themes": ["nasdaq-exposure"],
+    "type": "etf"
+  },
+  {
+    "market": "US",
+    "name": "Apple",
+    "sector": "big-tech",
+    "symbol": "AAPL",
+    "themes": ["consumer-tech"],
+    "type": "stock"
+  },
+  {
     "market": "US",
     "name": "ASML Holding",
     "sector": "semiconductor",
@@ -17,26 +33,18 @@
   },
   {
     "market": "US",
-    "name": "NVIDIA",
-    "sector": "semiconductor",
-    "symbol": "NVDA",
+    "name": "Microsoft",
+    "sector": "big-tech",
+    "symbol": "MSFT",
     "themes": ["AI-infra"],
     "type": "stock"
   },
   {
     "market": "US",
-    "name": "Invesco QQQ Trust",
-    "sector": "us-broad-market",
-    "symbol": "QQQ",
-    "themes": ["nasdaq-exposure"],
-    "type": "etf"
-  },
-  {
-    "market": "KR",
-    "name": "KODEX 200",
-    "sector": "kr-broad-market",
-    "symbol": "069500",
-    "themes": ["korea-exposure"],
-    "type": "etf"
+    "name": "NVIDIA",
+    "sector": "semiconductor",
+    "symbol": "NVDA",
+    "themes": ["AI-infra"],
+    "type": "stock"
   }
 ]

@@ -1,5 +1,36 @@
 {
   "$schema": "./holdings.schema.json",
   "as_of": "2026-02-16",
-  "positions": {}
+  "positions": {
+    "133690": {
+      "avg_cost": 120290,
+      "currency": "KRW",
+      "quantity": 14
+    },
+    "AAPL": {
+      "avg_cost": 246.4,
+      "currency": "USD",
+      "quantity": 0.8844465
+    },
+    "ASML": {
+      "avg_cost": 933.5,
+      "currency": "USD",
+      "quantity": 0.2334432
+    },
+    "META": {
+      "avg_cost": 723.3,
+      "currency": "USD",
+      "quantity": 0.9131315
+    },
+    "MSFT": {
+      "avg_cost": 460.8,
+      "currency": "USD",
+      "quantity": 0.8806336
+    },
+    "NVDA": {
+      "avg_cost": 172.7,
+      "currency": "USD",
+      "quantity": 1.2656548
+    }
+  }
 }
