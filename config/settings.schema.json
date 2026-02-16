@@ -50,6 +50,12 @@
       "description": "총 투자 예산 (원). 배분 합계는 이 금액을 초과할 수 없음",
       "minimum": 100000
     },
+    "holdings_staleness_threshold_days": {
+      "type": "integer",
+      "description": "보유 현황(holdings.json)의 as_of 날짜가 이 일수를 초과하면 STALE 경고. 월간 리뷰 주기에 맞춰 설정",
+      "minimum": 1,
+      "default": 30
+    },
     "risk_tolerance": {
       "type": "object",
       "description": "리스크 한도. 배분 검증 스크립트가 이 값을 기준으로 위반 여부를 판정",

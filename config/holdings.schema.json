@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Holdings",
+  "description": "보유 현황. 사용자가 매매 후 수동 갱신. portfolio-analyze 스킬이 delta 계산에 사용",
+  "type": "object",
+  "required": ["as_of", "positions"],
+  "properties": {
+    "as_of": {
+      "type": "string",
+      "format": "date",
+      "description": "최종 갱신 일자 (ISO 8601). 매매 실행 후 당일 날짜로 업데이트"
+    },
+    "positions": {
+      "type": "object",
+      "description": "심볼별 보유 현황. 키는 watchlist.json의 symbol과 동일. 빈 객체 허용 (첫 실행 시)",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["avg_cost", "currency", "quantity"],
+        "properties": {
+          "avg_cost": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "평균 매입 단가. US 종목은 USD, KR 종목은 KRW 기준"
+          },
+          "currency": {
+            "type": "string",
+            "enum": ["USD", "KRW"],
+            "description": "매입 단가 통화. market과 일치해야 함 (US→USD, KR→KRW)"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0,
+            "description": "보유 수량. 소수점 허용 (금액 단위 매수 시 0.5주 등). 전량 매도 시 0"
+          }
+        }
+      }
+    }
+  }
+}
