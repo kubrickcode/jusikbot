@@ -5,24 +5,26 @@ Personal investment portfolio management tool. Collects market data, stores in P
 ## Architecture
 
 ```
-Go collector → PostgreSQL → Claude Code skill (/portfolio-analyze)
+Go collector → PostgreSQL → Claude Code skills
      ↓              ↓              ↓
-Tiingo/KIS/     price_history   SKILL.md + references/
-Frankfurter     fx_rate         validate scripts
+Tiingo/KIS/     price_history   /thesis-research (web search → fact-check)
+Frankfurter     fx_rate              ↓
+                                /portfolio-analyze (price data + research → allocation)
 ```
 
 ## Key Commands
 
-| Command               | Description                    |
-| --------------------- | ------------------------------ |
-| `just collect`        | Run Go collector (all sources) |
-| `just collect us`     | Collect US stocks only         |
-| `just collect kr`     | Collect KR stocks only         |
-| `just collect fx`     | Collect FX rates only          |
-| `just migrate`        | Run DB migrations              |
-| `just test-collector` | Run Go tests                   |
-| `just lint`           | Format config + justfile       |
-| `/portfolio-analyze`  | Run portfolio analysis skill   |
+| Command               | Description                             |
+| --------------------- | --------------------------------------- |
+| `just collect`        | Run Go collector (all sources)          |
+| `just collect us`     | Collect US stocks only                  |
+| `just collect kr`     | Collect KR stocks only                  |
+| `just collect fx`     | Collect FX rates only                   |
+| `just migrate`        | Run DB migrations                       |
+| `just test-collector` | Run Go tests                            |
+| `just lint`           | Format config + justfile                |
+| `/thesis-research`    | Fact-check theses + discover candidates |
+| `/portfolio-analyze`  | Run portfolio analysis skill            |
 
 ## File Structure
 
@@ -37,9 +39,16 @@ collector/               # Go module — data collection
   internal/              # collector, store, indicator packages
 data/
   summary.md             # 14-column technical indicator summary (auto-generated)
+  thesis-check.json      # Thesis condition fact-check results (from /thesis-research)
+  candidates.json        # Candidate companies discovered (from /thesis-research)
+  research-history/      # Archived thesis-check snapshots (thesis-check-YYYY-MM-DD.json)
 output/reports/          # Portfolio analysis reports (YYYY-MM-DD.md)
+.claude/skills/thesis-research/
+  SKILL.md               # Thesis research workflow (web search enabled)
+  scripts/               # validate_research.py
+  references/            # research-methodology.md
 .claude/skills/portfolio-analyze/
-  SKILL.md               # Skill workflow definition
+  SKILL.md               # Portfolio analysis workflow (price data + research)
   scripts/               # Validation scripts (Python/Bash)
   references/            # methodology, bias-guardrails, query-templates
 docs/decisions/          # Architecture Decision Records

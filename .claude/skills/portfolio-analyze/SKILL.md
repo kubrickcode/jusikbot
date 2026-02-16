@@ -15,16 +15,17 @@ These rules apply to ALL phases. Violation causes report rejection.
 
 **Data Sources — Whitelist (MUST cite ONLY from these)**:
 
-| Tag        | Source                         | Contains                           |
-| ---------- | ------------------------------ | ---------------------------------- |
-| [summary]  | `data/summary.md`              | 14-column technical indicators     |
-| [psql]     | PostgreSQL via `$DATABASE_URL` | price_history, fx_rate tables      |
-| [user]     | `$ARGUMENTS`                   | User-provided context              |
-| [config]   | `config/settings.json`         | Budget, ratios, limits             |
-| [holdings] | `config/holdings.json`         | Current positions, quantity, cost  |
+| Tag        | Source                         | Contains                          |
+| ---------- | ------------------------------ | --------------------------------- |
+| [summary]  | `data/summary.md`              | 14-column technical indicators    |
+| [psql]     | PostgreSQL via `$DATABASE_URL` | price_history, fx_rate tables     |
+| [user]     | `$ARGUMENTS`                   | User-provided context             |
+| [config]   | `config/settings.json`         | Budget, ratios, limits            |
+| [holdings] | `config/holdings.json`         | Current positions, quantity, cost |
+| [research] | `data/thesis-check.json`       | Per-condition fact-check results  |
 
 - You MUST NOT cite, infer, or reference any data not from the above sources.
-- Every numeric claim in the report MUST carry a source tag: `[summary]`, `[psql]`, `[user]`, or `[config]`.
+- Every numeric claim in the report MUST carry a source tag: `[summary]`, `[psql]`, `[user]`, `[config]`, or `[research]`.
 
 **Confidence**: Default is **Medium**. Upgrade/downgrade rules in `references/methodology.md`.
 
@@ -56,10 +57,12 @@ These rules apply to ALL phases. Violation causes report rejection.
 | 6   | Read `.claude/skills/portfolio-analyze/references/bias-guardrails.md` |
 | 7   | Bash: `ls output/reports/`                                            |
 | 8   | Read `config/holdings.json`                                           |
+| 9   | Read `data/thesis-check.json` (if exists)                             |
 
-**Round 2 — Latest Report + Freshness + Holdings Validation**:
+**Round 2 — Latest Report + Freshness + Research Freshness + Holdings Validation**:
 
 - If `ls` found report files: Read the most recent `output/reports/YYYY-MM-DD.md` and parse its allocation table into `previous_allocations` JSON.
+- If `data/thesis-check.json` exists: check `checked_at` is within 7 days. If stale or missing: AskUserQuestion — "thesis-check.json이 {N}일 전 데이터입니다. `/thesis-research` 먼저 실행하시겠습니까?" If missing entirely, proceed without [research] data — treat all thesis conditions as `unknown` for confidence assessment.
 - Bash: `.claude/skills/portfolio-analyze/scripts/validate-freshness.sh data/summary.md output/reports`
 - If status is `STALE`: AskUserQuestion — "summary.md is N days old. Proceed with stale data or run `just collect` first?"
 - Store `review_type` (monthly/quarterly) from freshness output.
@@ -83,9 +86,9 @@ These rules apply to ALL phases. Violation causes report rejection.
 
 **For each thesis in `config/theses.md`**:
 
-1. Evaluate validity conditions against current data (cite sources)
-2. Evaluate invalidation conditions
-3. Assign confidence: Medium (default), upgrade to High or downgrade to Low per `references/methodology.md` rules
+1. Evaluate validity conditions against current data (cite sources). If `data/thesis-check.json` [research] is available, cross-reference condition statuses (met/partially_met/not_yet/refuted/unknown) — [research] provides real-world fact-checks that supplement [summary] price data.
+2. Evaluate invalidation conditions. A single `refuted` invalidation condition [research] → thesis `invalidated` regardless of validity conditions.
+3. Assign confidence: Medium (default), upgrade to High or downgrade to Low per `references/methodology.md` rules. If [research] data is unavailable (no thesis-check.json), cap confidence at Medium for any thesis with non-price validity conditions.
 4. Overextension qualifier: if confidence = High AND `vs 200D` > +20% [summary] → append "진입 타이밍 주의"
 5. KR data quality: if symbol has KIS adj_close warning in summary.md, MUST NOT upgrade to High based on technical indicators alone
 6. Include at least one counter-argument with data
@@ -105,6 +108,7 @@ These rules apply to ALL phases. Violation causes report rejection.
 **Compute current_holdings_krw** (if holdings has non-empty positions):
 
 For each position in `config/holdings.json`:
+
 - US stocks (currency=USD): `current_krw = quantity × avg_cost × latest_usd_krw_rate` (from `fx_rate` table via psql)
 - KR stocks (currency=KRW): `current_krw = quantity × avg_cost`
 - Round each to nearest `adjustment_unit_krw`

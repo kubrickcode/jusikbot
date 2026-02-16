@@ -178,7 +178,7 @@ _NUMBER_PATTERN = re.compile(
     r"|\d{1,3}(?:,\d{3})+",
     re.IGNORECASE,
 )
-_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자|config|holdings)\]")
+_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자|config|holdings|research)\]")
 
 
 def validate_source_tags(content: str) -> list[ReportError]:

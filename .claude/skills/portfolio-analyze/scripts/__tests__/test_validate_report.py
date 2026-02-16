@@ -311,6 +311,15 @@ class TestSourceTagsWithHoldings(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestSourceTagsWithResearch(unittest.TestCase):
+    """validate_source_tags — [research] tag support"""
+
+    def test_passes_research_tag(self):
+        report = "NVDA 분기 매출 YoY +78% 성장 지속 [research]."
+        errors = validate_source_tags(report)
+        self.assertEqual(errors, [])
+
+
 class TestValidateReport(unittest.TestCase):
     """validate_report — integration of all rules"""
 
