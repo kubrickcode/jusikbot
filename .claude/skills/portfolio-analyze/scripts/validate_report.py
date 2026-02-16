@@ -178,7 +178,7 @@ _NUMBER_PATTERN = re.compile(
     r"|\d{1,3}(?:,\d{3})+",
     re.IGNORECASE,
 )
-_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자|config)\]")
+_SOURCE_TAG_PATTERN = re.compile(r"\[(summary|psql|user|사용자|config|holdings)\]")
 
 
 def validate_source_tags(content: str) -> list[ReportError]:
@@ -228,7 +228,28 @@ def validate_kr_data_warning(content: str) -> list[ReportError]:
     ]
 
 
-def validate_report(content: str) -> ValidationResult:
+def validate_action_directives(
+    sections: dict[str, tuple[int, str]],
+    has_holdings: bool,
+) -> list[ReportError]:
+    """When holdings exist, report must include '행동 지시' section."""
+    if not has_holdings:
+        return []
+
+    section_names = list(sections.keys())
+    if not any("행동 지시" in name for name in section_names):
+        return [
+            ReportError(
+                rule="action_directives_required",
+                detail="Holdings exist but missing required section: 행동 지시",
+            )
+        ]
+    return []
+
+
+def validate_report(
+    content: str, has_holdings: bool = False
+) -> ValidationResult:
     sections = extract_sections(content)
     errors: list[ReportError] = []
 
@@ -238,6 +259,7 @@ def validate_report(content: str) -> ValidationResult:
     errors.extend(validate_forbidden_expressions(content))
     errors.extend(validate_source_tags(content))
     errors.extend(validate_kr_data_warning(content))
+    errors.extend(validate_action_directives(sections, has_holdings))
 
     status = "PASS" if not errors else "FAIL"
     return ValidationResult(status=status, errors=errors)
@@ -260,6 +282,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description="Validate portfolio analysis report"
     )
     parser.add_argument("report_path", help="Path to report markdown file")
+    parser.add_argument(
+        "--has-holdings",
+        action="store_true",
+        help="When set, requires '행동 지시' section in the report",
+    )
     return parser.parse_args(argv)
 
 
@@ -276,7 +303,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    result = validate_report(content)
+    result = validate_report(content, has_holdings=args.has_holdings)
     print(json.dumps(_serialize_result(result), ensure_ascii=False))
     return 0
 

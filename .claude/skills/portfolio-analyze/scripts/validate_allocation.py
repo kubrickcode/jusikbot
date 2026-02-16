@@ -215,20 +215,23 @@ def validate_anchoring(
     previous: Optional[dict],
     review_type: str,
     settings: dict,
+    current_holdings: Optional[dict] = None,
 ) -> list[AllocationError]:
-    if not previous:
+    # Holdings reflect actual ownership; previous allocations are unexecuted proposals
+    reference = current_holdings if current_holdings is not None else previous
+    if reference is None:
         return []
 
     anchoring = settings["anchoring"]
     max_per = anchoring[f"{review_type}_max_change_per_position_krw"]
     max_total = anchoring[f"{review_type}_max_total_change_krw"]
 
-    all_symbols = sorted(set(allocations.keys()) | set(previous.keys()))
+    all_symbols = sorted(set(allocations.keys()) | set(reference.keys()))
     errors = []
     total_change = 0
 
     for symbol in all_symbols:
-        old_amount = previous.get(symbol, {}).get("amount", 0)
+        old_amount = reference.get(symbol, {}).get("amount", 0)
         new_amount = allocations.get(symbol, {}).get("amount", 0)
         change = abs(new_amount - old_amount)
         total_change += change
@@ -299,6 +302,7 @@ def validate_allocation(
     settings: dict,
     previous: Optional[dict] = None,
     review_type: str = "monthly",
+    current_holdings: Optional[dict] = None,
 ) -> ValidationResult:
     budget = settings.get("budget_krw", 0)
     if not isinstance(budget, (int, float)) or budget <= 0:
@@ -327,7 +331,8 @@ def validate_allocation(
     errors.extend(validate_core_satellite_ratio(allocations, settings))
     errors.extend(validate_core_internal_ratio(allocations, settings))
     errors.extend(validate_anchoring(
-        allocations, previous, review_type, settings))
+        allocations, previous, review_type, settings,
+        current_holdings=current_holdings))
 
     status = "PASS" if not errors else "FAIL"
     return ValidationResult(status=status, errors=errors)
@@ -364,6 +369,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--previous-allocations", help="Previous allocation JSON string"
     )
     parser.add_argument(
+        "--current-holdings",
+        help="Current holdings KRW amounts JSON string (takes priority over --previous-allocations for anchoring)",
+    )
+    parser.add_argument(
         "--review-type",
         choices=["monthly", "quarterly"],
         default="monthly",
@@ -398,8 +407,20 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
 
+    current_holdings = None
+    if args.current_holdings:
+        try:
+            current_holdings = json.loads(args.current_holdings)
+        except json.JSONDecodeError as exc:
+            print(
+                json.dumps({"status": "ERROR", "detail": str(exc)}),
+                file=sys.stderr,
+            )
+            return 1
+
     result = validate_allocation(
-        allocations, watchlist, settings, previous, args.review_type
+        allocations, watchlist, settings, previous, args.review_type,
+        current_holdings=current_holdings,
     )
     print(json.dumps(_serialize_result(result), ensure_ascii=False))
     return 0

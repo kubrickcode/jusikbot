@@ -62,6 +62,12 @@ Within each satellite confidence pool, distribute equally among positions. Round
 - New positions: NOT permitted.
 - Existing positions: apply BOTH constraints, take the SMALLER result: (a) 50% of previous allocation amount, (b) the Low confidence pool share. First run (no previous report): only constraint (b) applies.
 
+**Anchoring Reference Point**:
+
+- **Primary**: Current holdings value in KRW (`config/holdings.json` → computed `current_holdings_krw`). Represents the user's actual portfolio state.
+- **Fallback**: Previous report's allocation amounts (`previous_allocations`). Used only when holdings data is unavailable (empty positions or missing file).
+- Rationale: Holdings reflect what the user actually owns, whereas previous allocations are proposals the user may not have executed.
+
 **Constraint Priority** (when rules conflict during retry): (1) budget_total, (2) min_position, (3) anchoring, (4) core_satellite_ratio, (5) core_internal_ratio, (6) position_limits, (7) sector_concentration.
 
 **Drawdown Reference Point**: 52-week high from summary.md `52W H` column. Drawdown % = (52W H - Close) / 52W H \* 100.

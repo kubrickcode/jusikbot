@@ -398,6 +398,154 @@ class TestAnchoring(unittest.TestCase):
         self.assertGreaterEqual(len(total_errors), 1)
 
 
+class TestAnchoringWithCurrentHoldings(unittest.TestCase):
+    """validate_anchoring — current_holdings takes priority over previous_allocations"""
+
+    def test_uses_current_holdings_over_previous_when_both_provided(self):
+        """When both current_holdings and previous exist, anchor against current_holdings."""
+        current_holdings = {
+            "QQQ": {"amount": 2_100_000},
+            "069500": {"amount": 1_100_000},
+            "NVDA": {"amount": 500_000},
+            "ASML": {"amount": 500_000},
+            "META": {"amount": 800_000},
+        }
+        previous = {
+            "QQQ": {"amount": 1_500_000, "role": "core"},
+            "069500": {"amount": 500_000, "role": "core"},
+            "NVDA": {"amount": 1_000_000, "role": "satellite"},
+            "ASML": {"amount": 1_000_000, "role": "satellite"},
+            "META": {"amount": 1_000_000, "role": "satellite"},
+        }
+        current = {
+            "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "medium"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        # vs current_holdings: QQQ +200k, 069500 +100k, NVDA +100k, ASML 0, META -400k → total 800k > 500k limit
+        # vs previous: QQQ +800k (exceeds 200k per-position) — but should NOT be used
+        errors = validate_anchoring(
+            current, previous, "monthly", SETTINGS, current_holdings=current_holdings
+        )
+        # Anchoring against current_holdings: per-position all ≤200k, but total = 800k > 500k
+        total_errors = [e for e in errors if "total" in e.rule]
+        self.assertGreaterEqual(len(total_errors), 1)
+        # Should NOT have QQQ per-position error (only +200k vs holdings, within 200k limit)
+        per_position_errors = [e for e in errors if "per_position" in e.rule]
+        qqq_errors = [e for e in per_position_errors if "QQQ" in e.detail]
+        self.assertEqual(len(qqq_errors), 0)
+
+    def test_falls_back_to_previous_when_no_holdings(self):
+        """When current_holdings is None, fall back to previous_allocations."""
+        previous = {
+            "QQQ": {"amount": 2_000_000, "role": "core"},
+            "NVDA": {"amount": 1_500_000, "role": "core"},
+            "069500": {"amount": 500_000, "role": "satellite"},
+            "ASML": {"amount": 500_000, "role": "satellite"},
+            "META": {"amount": 500_000, "role": "satellite"},
+        }
+        current = {
+            "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+            "NVDA": {"amount": 1_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 400_000, "role": "satellite", "confidence": "medium"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 500_000, "role": "satellite", "confidence": "low"},
+        }
+        errors = validate_anchoring(
+            current, previous, "monthly", SETTINGS, current_holdings=None
+        )
+        # QQQ change = 300k > 200k per-position limit → should fail (using previous)
+        per_position_errors = [e for e in errors if "per_position" in e.rule]
+        self.assertEqual(len(per_position_errors), 1)
+        self.assertIn("QQQ", per_position_errors[0].detail)
+
+    def test_passes_within_limits_using_holdings(self):
+        """Holdings-based anchoring passes when all changes within limits."""
+        current_holdings = {
+            "QQQ": {"amount": 2_200_000},
+            "069500": {"amount": 1_100_000},
+            "NVDA": {"amount": 600_000},
+            "ASML": {"amount": 500_000},
+            "META": {"amount": 600_000},
+        }
+        current = {
+            "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "medium"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        # Changes: QQQ +100k, 069500 +100k, NVDA 0, ASML 0, META -200k → total 400k ≤ 500k
+        errors = validate_anchoring(
+            current, None, "monthly", SETTINGS, current_holdings=current_holdings
+        )
+        self.assertEqual(errors, [])
+
+    def test_skips_when_neither_holdings_nor_previous(self):
+        """When both current_holdings and previous are None, skip anchoring."""
+        errors = validate_anchoring(
+            VALID_ALLOCATION, None, "monthly", SETTINGS, current_holdings=None
+        )
+        self.assertEqual(errors, [])
+
+    def test_anchors_against_zero_when_empty_holdings_dict(self):
+        """Empty holdings dict {} means 'no positions' — anchors against zero, not fallback to previous."""
+        previous = {
+            "QQQ": {"amount": 2_300_000, "role": "core"},
+            "069500": {"amount": 1_200_000, "role": "core"},
+            "NVDA": {"amount": 600_000, "role": "satellite"},
+            "ASML": {"amount": 500_000, "role": "satellite"},
+            "META": {"amount": 400_000, "role": "satellite"},
+        }
+        errors = validate_anchoring(
+            VALID_ALLOCATION, previous, "monthly", SETTINGS, current_holdings={}
+        )
+        # Empty holdings → all positions are "new" (change from 0) → exceeds limits
+        self.assertGreater(len(errors), 0)
+
+
+class TestValidateAllocationWithHoldings(unittest.TestCase):
+    """validate_allocation — current_holdings integration"""
+
+    def test_passes_with_holdings_anchoring(self):
+        current_holdings = {
+            "QQQ": {"amount": 2_200_000},
+            "069500": {"amount": 1_100_000},
+            "NVDA": {"amount": 600_000},
+            "ASML": {"amount": 500_000},
+            "META": {"amount": 600_000},
+        }
+        result = validate_allocation(
+            VALID_ALLOCATION, WATCHLIST, SETTINGS, current_holdings=current_holdings
+        )
+        self.assertEqual(result.status, "PASS")
+
+    def test_rejects_per_position_violation_with_holdings(self):
+        current_holdings = {
+            "QQQ": {"amount": 2_000_000},
+            "069500": {"amount": 1_200_000},
+            "NVDA": {"amount": 600_000},
+            "ASML": {"amount": 500_000},
+            "META": {"amount": 700_000},
+        }
+        allocation = {
+            "QQQ": {"amount": 2_300_000, "role": "core", "confidence": "high"},
+            "069500": {"amount": 1_200_000, "role": "core", "confidence": "medium"},
+            "NVDA": {"amount": 600_000, "role": "satellite", "confidence": "medium"},
+            "ASML": {"amount": 500_000, "role": "satellite", "confidence": "medium"},
+            "META": {"amount": 400_000, "role": "satellite", "confidence": "low"},
+        }
+        # QQQ: +300k > 200k monthly limit
+        result = validate_allocation(
+            allocation, WATCHLIST, SETTINGS, current_holdings=current_holdings
+        )
+        self.assertEqual(result.status, "FAIL")
+        rules = {e.rule for e in result.errors}
+        self.assertIn("anchoring_per_position_monthly", rules)
+
+
 class TestConfidencePool(unittest.TestCase):
     """validate_confidence_pool"""
 

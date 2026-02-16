@@ -14,6 +14,7 @@ from validate_report import (
     validate_forbidden_expressions,
     validate_source_tags,
     validate_kr_data_warning,
+    validate_action_directives,
     validate_report,
 )
 
@@ -271,6 +272,45 @@ NVDA는 상승 추세입니다 [summary].
         self.assertEqual(errors, [])
 
 
+class TestActionDirectives(unittest.TestCase):
+    """validate_action_directives"""
+
+    def test_skips_when_no_holdings(self):
+        sections = extract_sections(VALID_REPORT)
+        errors = validate_action_directives(sections, has_holdings=False)
+        self.assertEqual(errors, [])
+
+    def test_rejects_missing_section_when_holdings_exist(self):
+        sections = extract_sections(VALID_REPORT)
+        errors = validate_action_directives(sections, has_holdings=True)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].rule, "action_directives_required")
+        self.assertIn("행동 지시", errors[0].detail)
+
+    def test_passes_with_section_when_holdings_exist(self):
+        report_with_action = VALID_REPORT.rstrip() + """
+
+## 행동 지시
+
+| 종목 | 행동 | 금액 | 비고 |
+|------|------|------|------|
+| NVDA | 매수 | 200,000원 | 토스증권 |
+| QQQ | 유지 | 0원 | — |
+"""
+        sections = extract_sections(report_with_action)
+        errors = validate_action_directives(sections, has_holdings=True)
+        self.assertEqual(errors, [])
+
+
+class TestSourceTagsWithHoldings(unittest.TestCase):
+    """validate_source_tags — [holdings] tag support"""
+
+    def test_passes_holdings_tag(self):
+        report = "현재 NVDA 보유 평가금액은 900,000원입니다 [holdings]."
+        errors = validate_source_tags(report)
+        self.assertEqual(errors, [])
+
+
 class TestValidateReport(unittest.TestCase):
     """validate_report — integration of all rules"""
 
@@ -304,6 +344,17 @@ QQQ 비중을 유지합니다 [user].
         rules = {e.rule for e in result.errors}
         self.assertIn("required_sections", rules)
         self.assertIn("forbidden_expression", rules)
+
+    def test_fails_when_holdings_but_no_action_section(self):
+        result = validate_report(VALID_REPORT, has_holdings=True)
+        self.assertEqual(result.status, "FAIL")
+        rules = {e.rule for e in result.errors}
+        self.assertIn("action_directives_required", rules)
+
+    def test_passes_without_holdings_flag(self):
+        """Backward compatibility: has_holdings=False by default."""
+        result = validate_report(VALID_REPORT, has_holdings=False)
+        self.assertEqual(result.status, "PASS")
 
 
 if __name__ == "__main__":

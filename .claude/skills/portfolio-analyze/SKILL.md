@@ -15,17 +15,20 @@ These rules apply to ALL phases. Violation causes report rejection.
 
 **Data Sources — Whitelist (MUST cite ONLY from these)**:
 
-| Tag       | Source                         | Contains                       |
-| --------- | ------------------------------ | ------------------------------ |
-| [summary] | `data/summary.md`              | 14-column technical indicators |
-| [psql]    | PostgreSQL via `$DATABASE_URL` | price_history, fx_rate tables  |
-| [user]    | `$ARGUMENTS`                   | User-provided context          |
-| [config]  | `config/settings.json`         | Budget, ratios, limits         |
+| Tag        | Source                         | Contains                           |
+| ---------- | ------------------------------ | ---------------------------------- |
+| [summary]  | `data/summary.md`              | 14-column technical indicators     |
+| [psql]     | PostgreSQL via `$DATABASE_URL` | price_history, fx_rate tables      |
+| [user]     | `$ARGUMENTS`                   | User-provided context              |
+| [config]   | `config/settings.json`         | Budget, ratios, limits             |
+| [holdings] | `config/holdings.json`         | Current positions, quantity, cost  |
 
 - You MUST NOT cite, infer, or reference any data not from the above sources.
 - Every numeric claim in the report MUST carry a source tag: `[summary]`, `[psql]`, `[user]`, or `[config]`.
 
 **Confidence**: Default is **Medium**. Upgrade/downgrade rules in `references/methodology.md`.
+
+**Holdings Fallback**: If `config/holdings.json` is missing or has empty `positions`, skip holdings-dependent features (행동 지시 section, holdings-based anchoring) and produce the same report as before holdings integration.
 
 **Forbidden Patterns**:
 
@@ -52,13 +55,18 @@ These rules apply to ALL phases. Violation causes report rejection.
 | 5   | Read `.claude/skills/portfolio-analyze/references/methodology.md`     |
 | 6   | Read `.claude/skills/portfolio-analyze/references/bias-guardrails.md` |
 | 7   | Bash: `ls output/reports/`                                            |
+| 8   | Read `config/holdings.json`                                           |
 
-**Round 2 — Latest Report + Freshness**:
+**Round 2 — Latest Report + Freshness + Holdings Validation**:
 
 - If `ls` found report files: Read the most recent `output/reports/YYYY-MM-DD.md` and parse its allocation table into `previous_allocations` JSON.
 - Bash: `.claude/skills/portfolio-analyze/scripts/validate-freshness.sh data/summary.md output/reports`
 - If status is `STALE`: AskUserQuestion — "summary.md is N days old. Proceed with stale data or run `just collect` first?"
 - Store `review_type` (monthly/quarterly) from freshness output.
+- If `config/holdings.json` has non-empty `positions`: Bash: `python .claude/skills/portfolio-analyze/scripts/validate_holdings.py config/holdings.json config/watchlist.json --settings config/settings.json`
+  - If `FAIL`: AskUserQuestion — "holdings.json 검증 실패: {errors}. 수정 후 재실행하시겠습니까?"
+  - If `WARN` with `stale_holdings`: AskUserQuestion — "holdings.json의 as_of가 {days}일 전입니다. 현재 데이터로 진행하시겠습니까?"
+  - Store validated holdings as `current_holdings_krw` (computed in Phase 3).
 
 **Overtrading Check** (deterministic):
 
@@ -94,15 +102,26 @@ These rules apply to ALL phases. Violation causes report rejection.
 
 ## Phase 3: Allocate + Validate (LLM + deterministic)
 
+**Compute current_holdings_krw** (if holdings has non-empty positions):
+
+For each position in `config/holdings.json`:
+- US stocks (currency=USD): `current_krw = quantity × avg_cost × latest_usd_krw_rate` (from `fx_rate` table via psql)
+- KR stocks (currency=KRW): `current_krw = quantity × avg_cost`
+- Round each to nearest `adjustment_unit_krw`
+
+Store as: `{"SYMBOL": {"amount": current_krw}, ...}`
+
 **Generate allocation JSON** with this exact structure:
 
 ```json
 {
-  "SYMBOL": {"amount": N, "role": "core|satellite", "confidence": "high|medium|low"},
+  "SYMBOL": {"amount": N, "role": "core|satellite", "confidence": "high|medium|low", "current_krw": M},
   ...
 }
 ```
 
+- `current_krw`: current holding value in KRW (from holdings computation above). Omit if no holdings for this symbol.
+- `delta_krw = amount - current_krw` (computed per symbol; positive = buy, negative = sell)
 - Use symbol names exactly as in `config/watchlist.json`
 - Follow sizing rules in `references/methodology.md` Section 4
 - Round all amounts to `adjustment_unit_krw` multiples
@@ -116,6 +135,7 @@ python .claude/skills/portfolio-analyze/scripts/validate_allocation.py \
   --watchlist config/watchlist.json \
   --allocations '<ALLOCATION_JSON>' \
   [--previous-allocations '<PREV_JSON>'] \
+  [--current-holdings '<HOLDINGS_KRW_JSON>'] \
   --review-type <monthly|quarterly>
 ```
 
@@ -133,14 +153,21 @@ python .claude/skills/portfolio-analyze/scripts/validate_allocation.py \
 - `## 요약` — 1-paragraph executive summary
 - `## 논제별 현황` — H3 per thesis, each with: status, confidence, evidence, and counter-argument under `**반론/리스크**:` heading
 - `## 배분 제안` — allocation table + change rationale per position
+- `## 행동 지시` — **Only if holdings has non-empty positions**. Per-symbol action directives:
+  - Table columns: 종목, 행동 (매수/매도/유지), 금액, 비고
+  - 행동: `delta_krw > 0` → 매수, `delta_krw < 0` → 매도, `delta_krw == 0` → 유지
+  - 금액: absolute value of `delta_krw`, formatted as KRW
+  - 비고: broker (토스증권 for US, 한국투자증권 for KR) + any relevant notes
+  - If `config/holdings.json` has empty positions, OMIT this entire section.
 - `## 리스크 요인` — portfolio-level risks, drawdown status, bias audit summary
 
 **Validate**: Run:
 
 ```bash
-python .claude/skills/portfolio-analyze/scripts/validate_report.py output/reports/YYYY-MM-DD.md
+python .claude/skills/portfolio-analyze/scripts/validate_report.py output/reports/YYYY-MM-DD.md [--has-holdings]
 ```
 
+- Add `--has-holdings` flag when `config/holdings.json` has non-empty positions.
 - If FAIL: fix violated rules and rewrite. Maximum 2 retries.
 
 **Self-Check (2 items)**:
