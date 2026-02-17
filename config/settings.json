@@ -25,9 +25,9 @@
   },
   "strategy": {
     "core_internal_ratio": {
-      "133690": 1
+      "360750": 1
     },
-    "core_pct": 70,
-    "satellite_pct": 30
+    "core_pct": 50,
+    "satellite_pct": 50
   }
 }

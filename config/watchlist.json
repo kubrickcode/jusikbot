@@ -1,6 +1,14 @@
 [
   {
     "market": "KR",
+    "name": "TIGER 미국S&P500",
+    "sector": "us-broad-market",
+    "symbol": "360750",
+    "themes": ["sp500-core"],
+    "type": "etf"
+  },
+  {
+    "market": "KR",
     "name": "TIGER 미국나스닥100",
     "sector": "us-broad-market",
     "symbol": "133690",
