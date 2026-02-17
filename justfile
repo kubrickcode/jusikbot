@@ -2,10 +2,13 @@ set dotenv-load := true
 
 root_dir := justfile_directory()
 
-deps: deps-root
+deps: deps-root deps-web
 
 deps-root:
     pnpm install
+
+deps-web:
+    cd {{ root_dir }}/web && pnpm install
 
 install-psql:
     #!/usr/bin/env bash
@@ -44,6 +47,9 @@ reset:
 
 collect target='all':
     cd {{ root_dir }}/collector && go run ./cmd/collect --target {{ target }}
+
+dev-web:
+    cd {{ root_dir }}/web && pnpm dev
 
 test-collector:
     cd {{ root_dir }}/collector && go test ./...
